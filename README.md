@@ -5,8 +5,7 @@ This repository contains a simple web application that demonstrates the A* pathf
 ## How to Use
 
 1. **Left-click**: Toggle obstacles on the grid.
-2. **Right-click**: Set the start point (green). 
-3. **Drag Right Mouse Button**: Set the end point (red).
+2. **Right-click**: Set the start point (green).
 
 ## Demo
 
