@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A* Pathfinding</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin: 20px;
+            font-family: sans-serif;
+        }
+        h1 {
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>A* Pathfinding</h1>
+    <p>Left-click to toggle obstacles, right-click to set start point (green) and drag to set end point (red). A code experiment by <a href="https://www.adamstirtan.com">Adam Stirtan</a>.</p>
+    <canvas id="pathfindingCanvas" width="600" height="400"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvas = document.getElementById('pathfindingCanvas');
+            const ctx = canvas.getContext('2d');
+            const gridSize = 20;
+            const rows = canvas.height / gridSize;
+            const cols = canvas.width / gridSize;
+
+            const grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+            let start = { row: 2, col: 2 };
+            let end = { row: rows - 3, col: cols - 3 };
+
+            let path = [];
+
+            // Function to draw the grid on the canvas
+            function drawGrid() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        if (grid[i][j] === 1) {
+                            // Draw obstacle
+                            ctx.fillStyle = '#333';
+                            ctx.fillRect(j * gridSize, i * gridSize, gridSize, gridSize);
+                        } else {
+                            // Draw empty cell
+                            ctx.strokeRect(j * gridSize, i * gridSize, gridSize, gridSize);
+                        }
+                    }
+                }
+
+                // Draw the path
+                ctx.fillStyle = 'blue'; // Path color
+                for (let node of path) {
+                    ctx.fillRect(node.col * gridSize, node.row * gridSize, gridSize, gridSize);
+                }
+
+                // Draw start and end points
+                ctx.fillStyle = 'green'; // Start point color
+                ctx.fillRect(start.col * gridSize, start.row * gridSize, gridSize, gridSize);
+
+                ctx.fillStyle = 'red'; // End point color
+                ctx.fillRect(end.col * gridSize, end.row * gridSize, gridSize, gridSize);
+            }
+
+            // Prevent the default right-click menu
+            canvas.addEventListener('contextmenu', function (event) {
+                event.preventDefault();
+            });
+
+            // Event listener to handle mouse clicks on the canvas
+            canvas.addEventListener('mousedown', function (event) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+
+                const clickedRow = Math.floor(mouseY / gridSize);
+                const clickedCol = Math.floor(mouseX / gridSize);
+
+                if (event.button === 0) {
+                    // Left mouse button: Toggle obstacle state
+                    grid[clickedRow][clickedCol] = 1 - grid[clickedRow][clickedCol];
+                } else if (event.button === 2) {
+                    // Right mouse button: Set start and end points
+                    if (!grid[clickedRow][clickedCol]) {
+                        start = { row: clickedRow, col: clickedCol };
+                    }
+                }
+
+                // Recalculate the path
+                path = astar(start, end);
+
+                // Redraw the grid
+                drawGrid();
+            });
+
+            // A* pathfinding algorithm
+            function astar(start, end) {
+                const openSet = [];
+                const closedSet = [];
+                openSet.push(start);
+
+                while (openSet.length > 0) {
+                    // Find the node with the lowest total cost in the open set
+                    let currentNode = openSet[0];
+                    for (let i = 1; i < openSet.length; i++) {
+                        if (openSet[i].f < currentNode.f || (openSet[i].f === currentNode.f && openSet[i].h < currentNode.h)) {
+                            currentNode = openSet[i];
+                        }
+                    }
+
+                    // Remove the current node from the open set
+                    openSet.splice(openSet.indexOf(currentNode), 1);
+                    closedSet.push(currentNode);
+
+                    // If the current node is the goal, reconstruct the path
+                    if (currentNode.row === end.row && currentNode.col === end.col) {
+                        let path = [];
+                        let temp = currentNode;
+                        while (temp) {
+                            path.push(temp);
+                            temp = temp.parent;
+                        }
+                        return path.reverse();
+                    }
+
+                    // Generate neighbors of the current node
+                    const neighbors = [];
+                    const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // Right, Down, Left, Up
+
+                    for (let dir of directions) {
+                        const neighborRow = currentNode.row + dir[0];
+                        const neighborCol = currentNode.col + dir[1];
+
+                        if (isValidCell(neighborRow, neighborCol)) {
+                            const neighbor = {
+                                row: neighborRow,
+                                col: neighborCol,
+                                g: currentNode.g + 1, // Cost to move to a neighboring cell is 1
+                                h: heuristic({ row: neighborRow, col: neighborCol }, end),
+                                f: 0,
+                                parent: currentNode,
+                            };
+
+                            neighbor.f = neighbor.g + neighbor.h;
+
+                            // Check if the neighbor is already in the closed set
+                            if (closedSet.some((node) => node.row === neighbor.row && node.col === neighbor.col)) {
+                                continue;
+                            }
+
+                            // Check if the neighbor is already in the open set
+                            const openSetNode = openSet.find((node) => node.row === neighbor.row && node.col === neighbor.col);
+                            if (!openSetNode || neighbor.g < openSetNode.g) {
+                                openSet.push(neighbor);
+                            }
+                        }
+                    }
+                }
+
+                // No path found
+                return null;
+            }
+
+
+            // Helper function to calculate the heuristic (Manhattan distance)
+            function heuristic(a, b) {
+                return Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
+            }
+
+            // Helper function to check if a cell is valid and not an obstacle
+            function isValidCell(row, col) {
+                return row >= 0 && row < rows && col >= 0 && col < cols && grid[row][col] !== 1;
+            }
+
+            // Initial draw of the grid
+            path = astar(start, end);
+            drawGrid();
+        });
+
+    </script>
+</body>
+</html>
