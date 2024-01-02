@@ -10,7 +10,7 @@ This repository contains a simple web application that demonstrates the A* pathf
 
 ## Demo
 
-You can try the live demo [here](#).
+You can try the live demo [here](https://adamstirtan.github.io/astar-js/).
 
 ## Implementation
 
